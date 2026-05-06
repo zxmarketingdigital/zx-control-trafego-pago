@@ -61,7 +61,8 @@
   }
   .btn:hover { border-color: var(--accent); }
 
-  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+  table { width: 100%; min-width: 720px; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
   th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
   th { background: var(--panel-2); color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
   tr:last-child td { border-bottom: none; }
@@ -187,7 +188,7 @@
       ${kpis.map(k=>`<td class="num">${formatValue(k, a.metrics[k])}</td>`).join('')}
       <td style="color:var(--muted);font-size:12px">${escapeHtml(a.decide_reason || '')}</td>
     </tr>`).join('');
-    return `<table>${headers}${rows}</table>`;
+    return `<div class="table-wrap"><table>${headers}${rows}</table></div>`;
   }
 
   function formatValue(key, v) {

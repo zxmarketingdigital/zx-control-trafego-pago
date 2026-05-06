@@ -1,5 +1,26 @@
 # IMPLEMENTATION.md
 
+## v0.1.1 — Codex-review fixes (2026-05-06)
+
+10 correções pós-review do Codex (5 ALTO + 3 MÉDIO + 2 BAIXO):
+
+**ALTO**
+- `scripts/fetch_metrics.py` — agregação reescrita: armazena counters raw (spend, leads, purchases, msgs, impressions, clicks, reach, purchase_value, installs) em ad/adset/campaign/conta. KPIs derivados via `sum/sum` em cada nível (CPL, CPA, ROAS, CTR, CPM, CPC, custo/msg, frequência) — nunca mais média ponderada de razões.
+- `scripts/fetch_metrics.py` — fail-loud: exit code 2 se qualquer janela falha; falha total no `campaign_meta` interrompe o fetch (exit 2).
+- `scripts/fetch_metrics.py` — busca `effective_status` + `daily_budget` + `lifetime_budget` + `bid_strategy` por campanha (necessário para `meta-budget-optimizer`).
+- `scripts/fetch_metrics.py` — token Meta movido da query string para header `Authorization: Bearer` (limpa `access_token=` de URLs paginadas vindas do `.next`).
+- `scripts/fetch_metrics.py` — `ACTION_TYPES` aceita variantes (lead + onsite_conversion.lead_grouped + leadgen.other + offsite_conversion.fb_pixel_lead; idem purchase + msg + install).
+- `setup/setup_perfil_campanhas.py` — valida `target > 0` em todas as KPIs; valida limiares 0 < scale_at/kill_at <= 5.
+- `setup/setup_perfil_campanhas.py` — modos `--template` / `--apply <json>` / `--show` para fluxo headless. Sem TTY → recusa interativo e instrui Claude.
+- `setup/setup_meta_oauth.py` — modos `--set-account act_X` (grava idempotente em `meta.env`) e `--validate` (verifica token + `meta.env` preenchido).
+
+**MÉDIO**
+- `setup/setup_skills.py` — não destrói skills meta-* customizadas. Compara árvore via `filecmp.dircmp`; se diff existe, faz backup em `~/.claude/skills/.s6-backup-{slug}-{timestamp}/` antes de instalar.
+
+**BAIXO**
+- `docs/paid-traffic-dashboard-template.html` — wrapper `.table-wrap` com `overflow-x: auto` e `min-width: 720px` na tabela para evitar overflow horizontal com 9 KPIs.
+- `zx-control-2-growth/docs/index.html` — badge S6 não conta painel id=0 (aulas) no numerador (filtra `id > 0`), mantém denominador 10.
+
 ## v0.1.0 — Lançamento inicial (2026-05-06)
 
 Setup 6 do ZX Control 2.0 Growth — Tráfego Pago Meta ADS.
