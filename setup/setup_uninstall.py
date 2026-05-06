@@ -99,14 +99,17 @@ def revert_phase():
         print(f"  - phase_completed já é {data.get('phase_completed')}")
 
 
-def show_demo_campaigns():
+def read_demo_campaign_ids():
+    """Lê IDs DEMO de progress.json ANTES do uninstall remover o arquivo."""
     if not PROGRESS.exists():
-        return
+        return []
     try:
-        data = json.loads(PROGRESS.read_text())
+        return json.loads(PROGRESS.read_text()).get("demo_campaign_ids", []) or []
     except Exception:
-        return
-    ids = data.get("demo_campaign_ids", [])
+        return []
+
+
+def show_demo_campaigns(ids):
     if ids:
         print()
         print("⚠️  Setup criou campanhas DEMO (em PAUSED):")
@@ -132,6 +135,9 @@ def main():
     if choice not in ("A", "B"):
         print("Cancelado.")
         return 0
+
+    # Cache demo IDs ANTES de remover progress.json
+    demo_ids = read_demo_campaign_ids()
 
     print()
     print("Removendo…")
@@ -167,7 +173,7 @@ def main():
     print("\nReverter fase:")
     revert_phase()
 
-    show_demo_campaigns()
+    show_demo_campaigns(demo_ids)
 
     print()
     print("✅ Uninstall completo.")

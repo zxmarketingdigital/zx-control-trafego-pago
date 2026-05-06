@@ -95,6 +95,7 @@ Execute: `python3 setup/setup_meta_oauth.py` (imprime fluxo de 2 vias)
 - Receber URL OAuth, aluno autoriza no browser
 - `mcp__meta-official__complete_authentication`
 - Validar com `mcp__meta-official__ads_get_ad_accounts`
+- ⚠️ **OBRIGATÓRIO** após Via A: `python3 setup/setup_meta_oauth.py --sync-from-mcp` — copia o access_token do `~/.claude.json` pra `meta.env`. Sem isso, o LaunchAgent (fetcher autônomo) não tem como ler o token.
 
 **Via B — System User Token (fallback obrigatório se Via A falhar):**
 
@@ -104,7 +105,7 @@ Se `mcp__meta-official__authenticate` retornar `redirect_uris not registered` OU
 python3 setup/setup_meta_oauth.py --renew
 ```
 
-Aluno cola token gerado em `business.facebook.com/settings/system-users` (permissões: ads_management, ads_read, business_management). Salva em `meta.env` (chmod 600). Valida via `GET /me`.
+Aluno cola token gerado em `business.facebook.com/settings/system-users` (permissões: ads_management, ads_read, business_management). Salva direto em `meta.env` (chmod 600). Valida via `GET /me`. Não precisa `--sync-from-mcp` (token já vai pra meta.env).
 
 **Após qualquer Via:**
 - `python3 setup/setup_meta_oauth.py --set-account act_<id>`

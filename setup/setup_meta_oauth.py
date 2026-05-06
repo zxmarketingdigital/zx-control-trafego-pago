@@ -74,6 +74,34 @@ def read_token():
     return read_env("META_ACCESS_TOKEN") or os.environ.get("META_ACCESS_TOKEN") or None
 
 
+def extract_token_from_claude_json():
+    """Best-effort: extrai access_token do ~/.claude.json (MCP oficial Meta).
+
+    Retorna (token, source) onde source é o nome do MCP servidor encontrado,
+    ou (None, None) se não encontrar.
+    """
+    cj = Path.home() / ".claude.json"
+    if not cj.exists():
+        return None, None
+    try:
+        data = json.loads(cj.read_text())
+    except Exception:
+        return None, None
+    for key in ("mcpServers", "mcp_servers", "mcp"):
+        block = data.get(key, {}) if isinstance(data, dict) else {}
+        for name, cfg in (block or {}).items():
+            if "meta" not in name.lower():
+                continue
+            if not isinstance(cfg, dict):
+                continue
+            token = (cfg.get("access_token")
+                     or cfg.get("token")
+                     or (cfg.get("env") or {}).get("META_ACCESS_TOKEN"))
+            if token:
+                return token, name
+    return None, None
+
+
 def read_account_from_env():
     return read_env("META_AD_ACCOUNT_ID")
 
@@ -223,6 +251,32 @@ def cmd_renew():
     return 0
 
 
+def cmd_sync_from_mcp():
+    """Extrai access_token de ~/.claude.json (MCP oficial Meta) e grava em meta.env.
+
+    Necessário após Via A — fetch_metrics.py (LaunchAgent) lê só de meta.env.
+    """
+    token, source = extract_token_from_claude_json()
+    if not token:
+        print("❌ Token não encontrado em ~/.claude.json (MCP oficial Meta).")
+        print("   Confirme que rodou `mcp__meta-official__authenticate` + `complete_authentication`.")
+        print("   Se Via A falhou, use Via B: python3 setup/setup_meta_oauth.py --renew")
+        return 1
+    rc = write_token(token)
+    if rc != 0:
+        return rc
+    print(f"   Origem: ~/.claude.json (MCP={source})")
+    print()
+    print("Validando token no Graph API…")
+    ok, msg = validate_token_via_graph(token)
+    if not ok:
+        print(f"⚠️  Token gravado mas Graph rejeitou: {msg}")
+        print("   Token pode estar expirado ou sem permissões. Tente Via B (--renew).")
+        return 3
+    print(f"✅ Token validado — {msg}")
+    return 0
+
+
 def cmd_instructions():
     if not OPERACAO.exists():
         print("❌ Rode setup_base_s6.py (E0) primeiro.")
@@ -241,11 +295,16 @@ def cmd_instructions():
     print("  4. mcp__meta-official__ads_get_ad_accounts")
     print("     → liste contas com is_ads_mcp_enabled=true (se >1, aluno escolhe)")
     print()
+    print("  5. python3 setup/setup_meta_oauth.py --sync-from-mcp")
+    print("     → ⚠️  OBRIGATÓRIO após Via A: copia token do ~/.claude.json")
+    print("       pra meta.env. Sem isso, fetcher autônomo (LaunchAgent) falha.")
+    print()
     print("⚠️  Se Via A falhar com 'redirect_uris not registered' OU lista vazia:")
     print()
     print("VIA B — System User Token (fallback):")
     print("  python3 setup/setup_meta_oauth.py --renew")
     print("  → guia o aluno a gerar token manual no Business Manager")
+    print("  → grava direto em meta.env (não precisa --sync-from-mcp)")
     print()
     print("APÓS QUALQUER VIA:")
     print("  python3 setup/setup_meta_oauth.py --set-account act_XXXXXXXX")
@@ -266,6 +325,8 @@ def main():
                         help="Grava META_ACCESS_TOKEN em meta.env (chmod 600)")
     parser.add_argument("--renew", action="store_true",
                         help="Fluxo Via B — aluno cola System User Token")
+    parser.add_argument("--sync-from-mcp", action="store_true",
+                        help="Copia token do ~/.claude.json (MCP oficial) pra meta.env")
     parser.add_argument("--validate", action="store_true",
                         help="Valida token + meta.env (Graph API GET /me)")
     args = parser.parse_args()
@@ -276,6 +337,8 @@ def main():
         return write_token(args.set_token)
     if args.renew:
         return cmd_renew()
+    if args.sync_from_mcp:
+        return cmd_sync_from_mcp()
     if args.validate:
         return cmd_validate()
     return cmd_instructions()

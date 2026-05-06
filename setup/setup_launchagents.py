@@ -28,12 +28,29 @@ PLISTS = [
 # Identifica meta-fetch entre os PLISTS (excluído quando há conflito)
 FETCH_PLIST = "com.zxlab.meta-fetch.plist"
 
-CONFLICT_PATTERN = re.compile(r"meta|fb|facebook|creative-roas", re.IGNORECASE)
+# Whitelist de labels conhecidos como fetchers Meta API. Restritivo —
+# evita falso positivo em labels com substring "meta" (ex: metadata helper).
+CONFLICT_LABELS = {
+    "com.zxlab.creative-roas-dashboard",
+    "com.zxlab.meta-capi-refund",
+    "com.zxlab.meta-ads-fetch",
+    "com.zxlab.fb-ads-fetch",
+}
+# Padrão extra: labels que claramente são fetchers Meta de outros projetos.
+CONFLICT_PATTERN = re.compile(
+    r"\.(meta-ads|fb-ads|facebook-ads|meta-fetch|creative-roas)(\b|[._-])",
+    re.IGNORECASE,
+)
 SELF_LABEL_PATTERN = re.compile(r"com\.zxlab\.meta-(fetch|dashboard-server)")
 
 
 def detect_conflicts():
-    """Retorna lista de labels LaunchAgent que parecem fetchers Meta de outros projetos."""
+    """Retorna lista de labels LaunchAgent que são fetchers Meta de outros projetos.
+
+    Match restrito: whitelist de labels conhecidos OU padrão `.meta-ads/.fb-ads/
+    .creative-roas/.meta-fetch.`. Não usa substring 'meta' solta — falso
+    positivo com `metadata`, `apple.metalkit`, etc.
+    """
     try:
         result = subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=10)
     except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -46,7 +63,7 @@ def detect_conflicts():
         label = parts[2]
         if SELF_LABEL_PATTERN.search(label):
             continue  # ignora os nossos
-        if CONFLICT_PATTERN.search(label):
+        if label in CONFLICT_LABELS or CONFLICT_PATTERN.search(label):
             matches.append(label)
     return matches
 

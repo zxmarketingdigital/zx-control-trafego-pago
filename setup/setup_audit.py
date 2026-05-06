@@ -89,24 +89,42 @@ def c_server_running():
         return False, "Server não está rodando (E5/E9)"
 
 
+def _fetch_skipped():
+    """Retorna razão do skip (se aluno escolheu pular meta-fetch em E9) ou None."""
+    p = OPERACAO / "config" / "setup6_progress.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text()).get("fetch_skipped_reason")
+    except Exception:
+        return None
+
+
 def c_launchagents_files():
     if platform.system() != "Darwin":
         return True, "macOS-only — pulado"
-    expected = ["com.zxlab.meta-fetch.plist", "com.zxlab.meta-dashboard-server.plist"]
+    skip = _fetch_skipped()
+    expected = ["com.zxlab.meta-dashboard-server.plist"]
+    if not skip:
+        expected.insert(0, "com.zxlab.meta-fetch.plist")
     missing = [n for n in expected if not (LAUNCH / n).exists()]
     if missing:
         return False, f"Faltando: {missing}"
-    return True, "2 plists instalados"
+    suffix = f" (fetch pulado: {skip})" if skip else ""
+    return True, f"{len(expected)} plist{'s' if len(expected) > 1 else ''} instalado{'s' if len(expected) > 1 else ''}{suffix}"
 
 
 def c_launchagents_loaded():
     if platform.system() != "Darwin":
         return True, "macOS-only — pulado"
+    skip = _fetch_skipped()
+    expected_count = 1 if skip else 2
     result = subprocess.run(["launchctl", "list"], capture_output=True, text=True)
     count = sum(1 for l in result.stdout.splitlines() if "zxlab.meta" in l)
-    if count < 2:
-        return False, f"Esperava 2 jobs ativos, encontrou {count}"
-    return True, f"{count} jobs ativos"
+    if count < expected_count:
+        return False, f"Esperava {expected_count} job(s) ativo(s), encontrou {count}"
+    suffix = f" (fetch pulado: {skip})" if skip else ""
+    return True, f"{count} job(s) ativo(s){suffix}"
 
 
 def c_phase_completed():
