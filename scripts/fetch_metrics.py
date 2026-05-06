@@ -85,23 +85,8 @@ def read_env(key):
 
 
 def read_token():
-    """Lê access_token do MCP oficial Meta."""
-    cj = Path.home() / ".claude.json"
-    if cj.exists():
-        try:
-            data = json.loads(cj.read_text())
-        except Exception:
-            data = {}
-        for key in ("mcpServers", "mcp_servers", "mcp"):
-            block = data.get(key, {}) if isinstance(data, dict) else {}
-            for name, cfg in (block or {}).items():
-                if "meta" in name.lower():
-                    token = (cfg.get("access_token")
-                             or cfg.get("token")
-                             or (cfg.get("env") or {}).get("META_ACCESS_TOKEN"))
-                    if token:
-                        return token
-    return os.environ.get("META_ACCESS_TOKEN") or read_env("META_ACCESS_TOKEN") or None
+    """Lê access_token de meta.env (fonte de verdade) ou env var."""
+    return read_env("META_ACCESS_TOKEN") or os.environ.get("META_ACCESS_TOKEN") or None
 
 
 def graph_get(path, params, token, *, page_url=None):
@@ -393,8 +378,21 @@ def main():
 
     token = read_token()
     if not token:
-        print("⚠️  Access token Meta não encontrado em ~/.claude.json nem META_ACCESS_TOKEN.")
-        print("   Reconecte o MCP: rode setup_meta_oauth.py (E2).")
+        meta_env_status = "existe" if META_ENV.exists() else "não existe"
+        print("❌ Token Meta inválido ou ausente.")
+        print()
+        print("Diagnóstico:")
+        print(f"  - meta.env: {meta_env_status} ({META_ENV})")
+        print(f"  - META_ACCESS_TOKEN preenchido: não")
+        print()
+        print("Pra resolver, rode:")
+        print("  python3 setup/setup_meta_oauth.py --renew")
+        print()
+        print("Ou gere token manual:")
+        print("  1. Abra https://business.facebook.com/settings/system-users")
+        print("  2. Selecione system user, clique 'Gerar token'")
+        print("  3. Permissões: ads_management, ads_read, business_management")
+        print("  4. Cole no terminal quando pedir.")
         return 1
 
     if args.check:

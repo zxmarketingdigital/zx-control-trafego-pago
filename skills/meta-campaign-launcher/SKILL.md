@@ -1,65 +1,107 @@
 ---
 name: meta-campaign-launcher
-description: "Cria campanha Meta ADS em DRAFT (campaign + ad set + ad) via MCP oficial Meta. Pergunta objetivo (a partir das opções do perfil do aluno), orçamento diário, audiência e criativo. Não publica — deixa em PAUSED para o aluno revisar no Ads Manager. Use SEMPRE que o aluno disser: criar campanha meta, lançar anúncio, novo ad set, subir criativo, campanha facebook, campanha instagram, anúncio meta, criar campanha lead, criar campanha whatsapp, criar campanha venda."
+description: "Cria sua campanha pronta no Facebook/Instagram sem você abrir o Gerenciador de Anúncios. Você só me diz: o que quer vender, quanto pode investir por dia, pra quem mostrar. Eu monto tudo e deixo PAUSADA — você revisa e ativa quando quiser. Triggers: criar campanha meta, nova campanha, lançar campanha, criar anúncio, criar campanha facebook, criar campanha instagram."
 model: sonnet
 effort: high
 ---
 
-# Meta Campaign Launcher
+# meta-campaign-launcher
 
-Cria uma campanha Meta ADS em DRAFT (status PAUSED). O aluno publica manualmente depois.
-
-## Pré-requisitos
-
-- `~/.operacao-ia/config/meta_perfil.json` existe (objetivos do aluno)
-- MCP `mcp__meta-official__*` autenticado (`ads_get_ad_accounts` retorna conta)
+Cria campanha Meta ADS em DRAFT (PAUSED) via MCP oficial. Aluno só conversa em linguagem comercial — skill descobre IDs (página FB, pixel, audiência) automaticamente.
 
 ## Fluxo
 
-1. Leia `meta_perfil.json` → liste apenas os `objectives` que o aluno marcou como opções válidas
-2. Pergunte: objetivo, nome da campanha, orçamento diário (CBO ou ABO), audiência (interesse/lookalike/custom_audience_id), criativo (URL imagem/video, copy, CTA, link destino)
-3. Confirme com o aluno todos os parâmetros antes de criar
-4. Chame em sequência:
-   - `mcp__meta-official__ads_create_campaign(account_id, name, objective, status="PAUSED", special_ad_categories=[])`
-   - `mcp__meta-official__ads_create_ad_set(campaign_id, name, daily_budget, optimization_goal, billing_event, targeting, status="PAUSED")`
-   - `mcp__meta-official__ads_create_ad(adset_id, name, creative, status="PAUSED")`
-5. Devolva ao aluno: campaign_id, adset_id, ad_id, link direto Ads Manager
+### 1. Lookup automático de contexto
 
-## Mapeamento de objetivos (perfil → Meta)
+ANTES de pedir input ao aluno, descobre:
 
-| Perfil aluno | Meta objective | optimization_goal | billing_event |
-|---|---|---|---|
-| LEAD_GENERATION | `OUTCOME_LEADS` | `LEAD_GENERATION` | `IMPRESSIONS` |
-| MESSAGES (WhatsApp/DM) | `OUTCOME_ENGAGEMENT` | `CONVERSATIONS` | `IMPRESSIONS` |
-| SALES | `OUTCOME_SALES` | `OFFSITE_CONVERSIONS` | `IMPRESSIONS` |
-| AWARENESS | `OUTCOME_AWARENESS` | `REACH` | `IMPRESSIONS` |
-| TRAFFIC | `OUTCOME_TRAFFIC` | `LINK_CLICKS` | `LINK_CLICKS` |
-| APP_INSTALL | `OUTCOME_APP_PROMOTION` | `APP_INSTALLS` | `IMPRESSIONS` |
+1. **Conta de anúncios**: lê `META_AD_ACCOUNT_ID` de `~/.operacao-ia/config/meta.env`. Se vazio, pede pro aluno rodar `setup_meta_oauth.py --set-account`.
 
-## Output
+2. **Páginas FB do Business**: chama `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_get_pages_for_business(business_id)`. `business_id` vem de `mcp__...__ads_get_ad_accounts → business.id`. Se >1, mostra lista numerada.
+
+3. **Pixel**: lê `META_PIXEL_ID` de `meta.env`. Se vazio, chama `GET /act_<id>/adspixels?fields=id,name` (via `mcp__meta-official` ou curl direto). Se >1, lista pra aluno escolher e grava no `meta.env`.
+
+4. **Audiência**: pergunta tipo:
+   - **Interesse** (segmentação fria): aluno digita interesses (ex: "marketing digital, agências")
+   - **Lookalike** (parecido com compradores): chama `GET /act_<id>/customaudiences?fields=id,name,subtype` filtra `LOOKALIKE`
+   - **Custom** (lista do seu CRM): lista `customaudiences` filtra `CUSTOM`
+
+### 2. Perguntas ao aluno (linguagem comercial)
 
 ```
-✅ Campanha criada em DRAFT (PAUSED)
+Vamos criar sua campanha. Te pergunto 4 coisas e monto tudo.
 
-ID: {campaign_id}
+1) O QUE você quer? (escolha o objetivo)
+   [1] Captar leads — pessoa preenche form pra ser contatada
+       Indicador-chave: CPL (custo por lead)
+
+   [2] Levar pra conversa — abre WhatsApp/DM ao clicar
+       Indicador-chave: custo por conversa iniciada
+
+   [3] Vender direto — clica e compra (Hotmart/checkout)
+       Indicador-chave: ROAS ou CPA
+
+2) QUANTO investir POR DIA? (mín. R$10)
+
+3) PRA QUEM mostrar?
+   [1] Por interesse (você define)
+   [2] Lookalike (parecido com seus compradores)
+   [3] Custom (sua lista do CRM)
+
+4) QUAL CRIATIVO?
+   - Cole URL pública (ex: https://...)
+   - OU caminho de arquivo local (ex: ~/Desktop/criativo.mp4)
+   - OU diga "pular" pra criar com placeholder
+```
+
+### 3. Suporte a criativo local (imagem ou vídeo)
+
+Detecta extensão:
+
+- **`.png`/`.jpg`/`.jpeg`**: upload via `mcp__meta_ads__meta_upload_image` se token meta_ads válido. Senão `curl POST /act_<id>/adimages -F filename=@path -F access_token=$TOKEN` (token de `meta.env`). Pega `image_hash` do response.
+
+- **`.mp4`/`.mov`**: `curl POST /act_<id>/advideos -F source=@path -F access_token=$TOKEN`. Pega `video_id`. Auto-extrai thumbnail:
+  ```bash
+  ffmpeg -i <video> -ss 00:00:02 -vframes 1 -y /tmp/thumb.jpg
+  ```
+  Upload thumb como image (passo anterior). Monta `creative.object_story_spec.video_data = {video_id, image_hash}`.
+
+- **URL pública** (http/https): passa direto em `image_url` ou `link` do creative spec.
+
+- **"pular"**: usa placeholder image_hash do BM (ou cria sem creative — campanha em DRAFT exige só estrutura).
+
+### 4. Image-from-chat (limitação clara)
+
+Se aluno disser "essa imagem aqui no chat" / "use a foto que mandei":
+> "Salve a imagem no chat (clique direito → Salvar imagem) em `~/Desktop/criativo.png` e me diga o caminho. Ou cole URL pública."
+
+NÃO tente automatizar — instrua aluno a fornecer caminho/URL.
+
+### 5. Criação no Meta
+
+Sequência de tool calls:
+
+1. `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_campaign(name, objective, status="PAUSED")`
+2. `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_ad_set(campaign_id, daily_budget, audience_spec, page_id, optimization_goal, billing_event, status="PAUSED")`
+3. `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_ad(adset_id, creative={...}, status="PAUSED")`
+
+### 6. Output ao aluno
+
+```
+✅ Campanha criada em PAUSED!
+
 Nome: {name}
-Objetivo: {objective}
-Orçamento: R${daily_budget}/dia
-Status: PAUSED
-
+Campaign ID: {campaign_id}
 Ad Set ID: {adset_id}
 Ad ID: {ad_id}
 
-Próximo passo:
-1. Abra https://business.facebook.com/adsmanager/manage/ads?act={ad_account_id}
-2. Localize "{name}" e revise targeting + criativo
-3. Mude status para ACTIVE quando estiver pronto
+Tudo PAUSADO — não vai gastar até você ativar.
 
-⚠️ Nada começa a gastar até você ativar manualmente.
+Revise no Ads Manager: https://business.facebook.com/adsmanager/
 ```
 
-## Erros comuns
+Salva IDs em `~/.operacao-ia/config/setup6_progress.json` campo `demo_campaign_ids`.
 
-- `(#100) Invalid parameter` → audiência inválida ou criativo malformado. Mostre o erro completo e peça para revisar
-- `(#200) Permissions error` → reautentique MCP via `mcp__meta-official__authenticate`
-- `Ad account suspended` → conta bloqueada, oriente o aluno a abrir suporte Meta
+## Glossário (linka aqui ao mencionar termo técnico)
+
+`docs/glossario.md` — termos como CPL/CPA/ROAS/Pixel/CBO/ABO/Lookalike traduzidos.

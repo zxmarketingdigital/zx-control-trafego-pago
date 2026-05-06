@@ -214,15 +214,54 @@ def ask_kpis_interactive():
     return kpis
 
 
+DECIDE_PRESETS = {
+    "conservative": {"scale_at": 0.8, "kill_at": 1.5,
+                     "label": "CONSERVADOR — banda larga, menos mexer"},
+    "aggressive":   {"scale_at": 1.0, "kill_at": 1.0,
+                     "label": "AGRESSIVO — sem zona neutra, decide na meta"},
+}
+
+
 def ask_decide_strategy_interactive(kpis):
     print("\n" + "=" * 60)
     print("ESTRATÉGIA decide() — quando matar/manter/escalar?")
     print("=" * 60)
-    print("\nDefaults inteligentes (recomendado):")
-    print("  SCALE quando o KPI atinge 80% da meta na direção certa")
-    print("  KILL  quando o KPI passa de 150% da meta na direção errada\n")
-    if input("Usar defaults? [S/n]: ").strip().lower() in ("", "s", "sim", "y", "yes"):
-        return kpis, True
+    print()
+    print("  [1] CONSERVADOR (recomendado)")
+    print("      SCALE quando KPI 20% melhor que meta (scale@0.8)")
+    print("      KILL  quando KPI 50% pior  que meta (kill@1.5)")
+    print("      MANTER tudo no meio — boa pra evitar mexer demais")
+    print()
+    print("  [2] AGRESSIVO")
+    print("      SCALE assim que atinge a meta (scale@1.0)")
+    print("      KILL  assim que passa da meta  (kill@1.0)")
+    print("      Sem zona neutra — toda mudança aciona ação")
+    print()
+    print("  [3] PERSONALIZADO")
+    print("      Você define scale_at e kill_at por KPI")
+    print()
+    raw = input("Escolha [1-3] (default 1): ").strip() or "1"
+
+    preset = None
+    if raw == "1":
+        preset = "conservative"
+    elif raw == "2":
+        preset = "aggressive"
+    elif raw == "3":
+        preset = "custom"
+    else:
+        print("Inválido — usando CONSERVADOR")
+        preset = "conservative"
+
+    if preset in ("conservative", "aggressive"):
+        cfg = DECIDE_PRESETS[preset]
+        for kpi in kpis:
+            kpi["scale_at"] = cfg["scale_at"]
+            kpi["kill_at"] = cfg["kill_at"]
+        print(f"\n✅ Preset {cfg['label']} aplicado a todos os KPIs.")
+        return kpis, True, preset
+
+    # Custom: pergunta por KPI
     for kpi in kpis:
         print(f"\n→ {kpi['label']} ({'menor é melhor' if kpi['better']=='lower' else 'maior é melhor'})")
         try:
@@ -232,7 +271,7 @@ def ask_decide_strategy_interactive(kpis):
             if kl: kpi["kill_at"] = float(kl)
         except ValueError:
             print("   Valor inválido — mantendo default")
-    return kpis, True
+    return kpis, True, "custom"
 
 
 def ask_primary_kpi_interactive(kpis):
@@ -275,7 +314,7 @@ def run_interactive():
         print("❌ Selecione pelo menos 1 objetivo")
         return 1
     kpis = ask_kpis_interactive()
-    kpis, decide_enabled = ask_decide_strategy_interactive(kpis)
+    kpis, decide_enabled, decide_preset = ask_decide_strategy_interactive(kpis)
     primary = ask_primary_kpi_interactive(kpis)
     windows = ask_windows_interactive()
 
@@ -285,6 +324,7 @@ def run_interactive():
                   "scale_at": k["scale_at"], "kill_at": k["kill_at"]} for k in kpis],
         "primary_kpi": primary,
         "decide_enabled": decide_enabled,
+        "decide_preset": decide_preset,
         "windows": windows,
         "ad_account_id": read_ad_account(),
     }

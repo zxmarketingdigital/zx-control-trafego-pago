@@ -13,6 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 OPERACAO = Path.home() / ".operacao-ia"
 SCRIPT_SRC = REPO_ROOT / "scripts" / "fetch_metrics.py"
 SCRIPT_DST = OPERACAO / "scripts" / "meta" / "fetch_metrics.py"
+RUNNER_SRC = REPO_ROOT / "scripts" / "run_fetch.sh"
+RUNNER_DST = OPERACAO / "scripts" / "meta" / "run_fetch.sh"
 PERFIL = OPERACAO / "config" / "meta_perfil.json"
 DASH_DIR = OPERACAO / "dashboards"
 
@@ -26,6 +28,11 @@ def main():
     shutil.copy2(SCRIPT_SRC, SCRIPT_DST)
     SCRIPT_DST.chmod(0o755)
     print(f"✅ fetch_metrics.py copiado para {SCRIPT_DST}")
+
+    if RUNNER_SRC.exists():
+        shutil.copy2(RUNNER_SRC, RUNNER_DST)
+        RUNNER_DST.chmod(0o755)
+        print(f"✅ run_fetch.sh copiado para {RUNNER_DST}")
 
     print("\n🔄 Executando primeira coleta...")
     result = subprocess.run(
