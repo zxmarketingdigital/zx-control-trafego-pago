@@ -88,14 +88,27 @@ Conecta uma vez. Token persiste em `~/.claude.json`. Renova automaticamente.
 > Antes, diga: "Vou abrir uma janela de autenticacao do Facebook. Voce precisa estar logado na conta que tem acesso ao Business Manager. Permissoes pedidas: ads_management e business_management."
 
 ### Instalacao
-Execute: `python3 setup/setup_meta_oauth.py`
+Execute: `python3 setup/setup_meta_oauth.py` (imprime fluxo de 2 vias)
 
-O script vai:
+**Via A — MCP oficial (preferida):**
 - Disparar `mcp__meta-official__authenticate`
-- Receber URL de OAuth, abrir no browser
-- Aguardar callback
-- Chamar `mcp__meta-official__complete_authentication`
-- Validar com `mcp__meta-official__ads_get_ad_accounts` — listar contas do aluno
+- Receber URL OAuth, aluno autoriza no browser
+- `mcp__meta-official__complete_authentication`
+- Validar com `mcp__meta-official__ads_get_ad_accounts`
+
+**Via B — System User Token (fallback obrigatório se Via A falhar):**
+
+Se `mcp__meta-official__authenticate` retornar `redirect_uris not registered` OU `ads_get_ad_accounts` voltar lista vazia, use Via B:
+
+```bash
+python3 setup/setup_meta_oauth.py --renew
+```
+
+Aluno cola token gerado em `business.facebook.com/settings/system-users` (permissões: ads_management, ads_read, business_management). Salva em `meta.env` (chmod 600). Valida via `GET /me`.
+
+**Após qualquer Via:**
+- `python3 setup/setup_meta_oauth.py --set-account act_<id>`
+- `python3 setup/setup_meta_oauth.py --validate` (deve retornar exit 0)
 
 Apos o script:
 
@@ -278,27 +291,36 @@ Diz no chat: "criar campanha de lead, R$30/dia, audiencia interesse marketing di
 
 ### Pronto para instalar?
 > Aguarde o aluno confirmar.
-> Antes, diga: "Vamos criar uma campanha REAL em DRAFT — nao vai gastar nada ate voce publicar manualmente. Tudo bem?"
+> Antes, diga: "Vamos criar uma campanha REAL em DRAFT (PAUSED) — nao vai gastar nada ate voce ativar. Tudo bem?"
 
 ### Instalacao
-Invoque a skill: digite "criar campanha meta" no chat. Siga o fluxo:
-- Objetivo (das opcoes do perfil dele)
-- Orcamento diario
-- Audiencia
-- Criativo (link ou upload)
 
-Skill cria via `mcp__meta-official__ads_create_campaign + ads_create_ad_set + ads_create_ad`.
+1. Execute primeiro: `python3 setup/setup_e6_test_campaign.py`
+   — imprime template DEMO baseado no perfil (nome, objetivo, budget mínimo, audiência placeholder).
+
+2. Invoque a skill `meta-campaign-launcher` com o template DEMO. Skill faz lookup automático:
+   - Páginas FB do Business (`ads_get_pages_for_business`)
+   - Pixel da conta (`/act_<id>/adspixels` ou `meta.env`)
+   - Audiência (interesse / lookalike / custom)
+
+3. Pergunte ao aluno o criativo: URL, caminho local (`.png/.jpg/.mp4/.mov`) ou "pular". Skill faz upload (`/adimages` ou `/advideos` + thumbnail via ffmpeg).
+
+4. Cria via `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_campaign + ads_create_ad_set + ads_create_ad`. Status sempre PAUSED.
+
+5. Após criar, marque progresso:
+   `python3 setup/setup_e6_test_campaign.py --mark-done <campaign_id>`
 
 Apos terminar:
 
-"Campanha criada em DRAFT!
+"Campanha criada em PAUSED!
 
-ID: {campaign_id}
+Campaign ID: {campaign_id}
+Ad Set ID: {adset_id}
+Ad ID: {ad_id}
 Nome: {name}
-Status: PAUSED (rascunho)
 
-Va ate o Ads Manager e revise antes de publicar:
-https://business.facebook.com/adsmanager/
+Tudo pausado — não vai gastar até você ativar.
+Revise no Ads Manager: https://business.facebook.com/adsmanager/
 
 Pronto para a Etapa 7?"
 
@@ -321,16 +343,31 @@ Voce repassa para designer/editor sem perder tempo redigindo briefing manualment
 > Aguarde o aluno confirmar.
 
 ### Instalacao
-Invoque a skill: digite "briefing criativo meta" no chat. Forneca:
-- Nicho do cliente
-- Dor principal
-- Oferta
+
+1. Execute: `python3 setup/setup_e7_test_brief.py`
+   — imprime instruções e prepara `~/.operacao-ia/briefings/`.
+
+2. Invoque a skill `meta-creative-brief`. Pergunte ao aluno:
+   - Nicho do cliente
+   - Dor principal
+   - Oferta
+
+   Se aluno não tem cliente real, use exemplo:
+   - Nicho: "agência marketing local"
+   - Dor: "leads desqualificados que não fecham"
+   - Oferta: "auditoria gratuita 30min"
+
+3. Skill grava markdown em `~/.operacao-ia/briefings/<slug>-<data>.md`.
+
+4. Marque progresso:
+   `python3 setup/setup_e7_test_brief.py --mark-done <path-do-md>`
 
 Apos terminar:
 
 "Briefing entregue acima!
 
-Use esse briefing direto com seu designer ou cole no Sora/Midjourney para gerar imagens.
+Salvo em: ~/.operacao-ia/briefings/<arquivo>.md
+Use direto com designer ou cole no Sora/Midjourney pra gerar imagens.
 
 Pronto para a Etapa 8?"
 
@@ -356,9 +393,21 @@ Decisoes de escala e budget viram comando de chat. Voce le o output, valida e ap
 > Aguarde o aluno confirmar.
 
 ### Instalacao
-1. Digite "analisar campanhas meta" — skill `meta-performance-analyzer` roda
-2. Em seguida, digite "realocar budget meta" — skill `meta-budget-optimizer` roda
-3. Mostre os outputs e pergunte se ele quer aplicar 1 das mudancas via `mcp__meta-official__ads_update_entity`
+
+1. Execute primeiro: `python3 setup/setup_e8_test_analyzer.py`
+   — checa `paid-traffic-7d.json` e conta ads qualificados (com amostra ≥1.2× a meta).
+
+2. Se contagem = 0, mostre ao aluno:
+   "Ainda não há ads com amostra suficiente. Campanhas novas demoram 24-72h. Daqui a 1-3 dias rode `/meta-metrics-fetcher` e depois `meta-performance-analyzer`."
+   → Pule pra Etapa 9.
+
+3. Se contagem ≥ 1:
+   - Invoque `meta-performance-analyzer` na janela 7d → top SCALE/KILL/KEEP.
+   - Se houver campanhas ACTIVE, invoque `meta-budget-optimizer` com budget total = soma dos `daily_budget` atuais.
+   - Mostre outputs. Pergunte se aluno quer aplicar 1 mudança via `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_update_entity`.
+
+4. Marque progresso:
+   `python3 setup/setup_e8_test_analyzer.py --mark-done`
 
 Apos terminar:
 
@@ -481,4 +530,8 @@ Nos vemos no proximo setup!
 - **Dashboards JSON:** `~/.operacao-ia/dashboards/paid-traffic-{4,7,14,30}d.json`
 - **Dashboard HTML:** servido em `http://localhost:8888/paid-traffic-dashboard-7d.html`
 - **Skills:** `~/.claude/skills/{agente-trafego-pago,meta-*}/`
-- **MCP usado:** `mcp__meta-official__*` (oficial Meta — `mcp.facebook.com/ads`)
+- **MCP usado:** `mcp__meta-official__*` (oficial Meta — `mcp.facebook.com/ads`) ou `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__*` (alias deferido)
+- **Token Meta:** `META_ACCESS_TOKEN` em `meta.env` (chmod 600). Fonte de verdade pro fetcher autônomo. Renovação: `setup_meta_oauth.py --renew`.
+- **Uninstall:** `python3 setup/setup_uninstall.py` — opção [A] mantém skills, [B] remove tudo.
+- **Glossário:** `docs/glossario.md` — CPL/CPA/ROAS/Pixel/CBO/ABO/Lookalike traduzidos.
+- **Progress flags:** `~/.operacao-ia/config/setup6_progress.json` (e6_test_completed, e7_test_completed, e8_test_completed, demo_campaign_ids, fetch_skipped_reason).

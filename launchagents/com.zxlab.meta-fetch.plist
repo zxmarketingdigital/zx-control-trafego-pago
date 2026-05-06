@@ -6,8 +6,8 @@
   <string>com.zxlab.meta-fetch</string>
   <key>ProgramArguments</key>
   <array>
-    <string>{PYTHON}</string>
-    <string>{HOME}/.operacao-ia/scripts/meta/fetch_metrics.py</string>
+    <string>/bin/bash</string>
+    <string>{HOME}/.operacao-ia/scripts/meta/run_fetch.sh</string>
   </array>
   <key>StartCalendarInterval</key>
   <array>
@@ -34,6 +34,8 @@
   <dict>
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    <key>PYTHON_BIN</key>
+    <string>{PYTHON}</string>
   </dict>
 </dict>
 </plist>

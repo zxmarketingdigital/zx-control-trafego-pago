@@ -1,89 +1,67 @@
 ---
 name: meta-creative-brief
-description: "Gera briefing criativo completo para anúncio Meta (Facebook/Instagram) com 3 hooks de copy, 3 hooks visuais, CTA, ângulos psicológicos e specs técnicos por placement (Reels 9:16, Feed 1:1, Stories 9:16). Output em markdown pronto para passar ao designer ou colar em Sora/Midjourney/Leonardo. Use SEMPRE que o aluno disser: briefing criativo meta, ideia de anuncio, criar copy ad, hook de anuncio, brief para designer, copy facebook, copy instagram, criativo para anuncio, brief criativo."
+description: "Gera briefing pronto pro designer/editor — 3 ângulos de copy, 3 ideias visuais, CTA, formato por placement (Feed, Reels, Stories). Você diz nicho + dor + oferta, eu entrego o documento. Triggers: briefing criativo, gerar briefing, criar briefing, briefing meta, briefing facebook."
 model: sonnet
-effort: high
+effort: medium
 ---
 
-# Meta Creative Brief
+# meta-creative-brief
 
-Gera briefing criativo de alta conversão para anúncios Meta.
+Gera markdown de briefing criativo pro designer/editor sem você redigir nada manualmente.
 
-## Inputs (perguntar ao aluno)
+## Input necessário
 
-1. **Nicho do cliente** (ex: imobiliária, dentista estético, agência de marketing)
-2. **Dor principal** (o problema agudo do público)
-3. **Oferta** (o que está sendo vendido + preço/condição)
-4. **Objetivo da campanha** (lead, WhatsApp, venda, alcance)
-5. **Tom de voz** (formal, casual, ousado, técnico)
+Pergunte ao aluno (linguagem comercial):
+1. **Nicho do cliente** (ex: "imobiliária", "agência marketing local")
+2. **Dor principal** (ex: "corretor sem leads qualificados")
+3. **Oferta** (ex: "agendamento gratuito de consultoria 30min")
+4. **Tom de voz** (opcional: profissional/casual/provocativo)
 
-## Output (markdown)
+## Output
+
+Markdown estruturado:
 
 ```markdown
 # Briefing Criativo — {nicho}
 
-## Persona-alvo
-{1-2 frases descrevendo quem ele/ela é, idade, contexto, momento de vida}
+## Contexto
+- Dor: {dor}
+- Oferta: {oferta}
+- Tom: {tom}
 
-## Ângulo central
-{a virada mental / insight que faz a oferta parecer urgente}
-
-## 3 Hooks de Copy (primeiras 3 linhas do anúncio)
-
-### Hook 1 — Dor explícita
-"{frase de impacto que nomeia a dor}"
-
-### Hook 2 — Promessa específica
-"{resultado mensurável + prazo}"
-
-### Hook 3 — Curiosidade / quebra de padrão
-"{frase que provoca leitura para descobrir o que vem depois}"
+## 3 Hooks de Copy
+1. {hook provocativo} — apela pra urgência/medo de perder
+2. {hook social proof} — mostra quem já usou e funcionou
+3. {hook benefício direto} — fala o que o cliente ganha
 
 ## 3 Hooks Visuais
+1. {ideia 1} — ex: "antes/depois com tempo cronometrado"
+2. {ideia 2} — ex: "depoimento em vídeo de 15s"
+3. {ideia 3} — ex: "tela de WhatsApp com mensagem real"
 
-### Visual 1 — Antes/Depois
-{descrição da cena, elementos, ritmo, paleta}
+## CTA
+- Principal: {ex: "Quero agendar agora"}
+- Alternativa: {ex: "Ver como funciona"}
 
-### Visual 2 — Demonstração
-{descrição}
+## Especificações por placement
 
-### Visual 3 — UGC (parecer orgânico)
-{descrição}
+### Reels / Stories (9:16 — 1080×1920)
+- Vídeo 15-30s, hook nos primeiros 3s
+- Texto grande (>60pt) — gente assiste sem som
+- Legenda burned-in obrigatória
 
-## Corpo do anúncio (estrutura)
-1. Hook (1 linha)
-2. Identificação da dor (2 linhas)
-3. Apresentação da solução (2 linhas)
-4. Prova / autoridade (1 linha)
-5. CTA direto
+### Feed / Discovery (1:1 — 1080×1080)
+- Estática ou vídeo 6-15s
+- Texto sobre imagem com contraste forte
+- Logo/marca no canto
 
-## CTAs sugeridos (escolher 1-3)
-- "{CTA 1 — direto}"
-- "{CTA 2 — curiosidade}"
-- "{CTA 3 — escassez}"
-
-## Specs técnicos por placement
-
-| Placement | Aspect ratio | Resolução mín | Duração (vídeo) | Texto seguro |
-|---|---|---|---|---|
-| Feed Facebook | 1:1 ou 4:5 | 1080×1080 | até 240s | margem 250px |
-| Feed Instagram | 1:1 ou 4:5 | 1080×1080 | até 60s | margem 14% |
-| Stories | 9:16 | 1080×1920 | até 60s | safe zone 14% top/bottom |
-| Reels | 9:16 | 1080×1920 | até 90s | logos fora dos 14% |
-
-## Paleta sugerida
-{3-5 cores em hex baseadas no nicho}
-
-## Tipografia
-{1 família para título + 1 para corpo}
-
-## Próximo passo
-Cole esse briefing direto com seu designer ou em uma ferramenta de geração de imagem (Sora, Midjourney, Leonardo). Para vídeo, valide o storyboard antes de gravar.
+### Stories / Status (9:16 — 1080×1920)
+- Mais leve, próximo do conteúdo orgânico
+- CTA "Arrastar pra cima" (link sticker)
 ```
 
-## Regras
+Salva em `~/.operacao-ia/briefings/{slug-nicho}-{YYYY-MM-DD}.md`.
 
-- Sempre use português
-- Não inclua placeholders genéricos — preencha com base no nicho/dor/oferta do aluno
-- Hooks devem caber em 1 linha cada (até 90 caracteres)
-- CTAs devem ser específicos (evite "Saiba mais")
+## Glossário
+
+`docs/glossario.md` — termos técnicos traduzidos.
