@@ -74,11 +74,33 @@ def read_token():
     return read_env("META_ACCESS_TOKEN") or os.environ.get("META_ACCESS_TOKEN") or None
 
 
+def _scan_mcp_block(block, source_prefix=""):
+    """Procura entry MCP com nome contendo 'meta' e extrai token."""
+    if not isinstance(block, dict):
+        return None, None
+    for name, cfg in block.items():
+        if "meta" not in name.lower():
+            continue
+        if not isinstance(cfg, dict):
+            continue
+        token = (cfg.get("access_token")
+                 or cfg.get("token")
+                 or (cfg.get("env") or {}).get("META_ACCESS_TOKEN"))
+        if token:
+            label = f"{source_prefix}{name}" if source_prefix else name
+            return token, label
+    return None, None
+
+
 def extract_token_from_claude_json():
     """Best-effort: extrai access_token do ~/.claude.json (MCP oficial Meta).
 
-    Retorna (token, source) onde source é o nome do MCP servidor encontrado,
-    ou (None, None) se não encontrar.
+    Cobre 3 shapes:
+      - top-level mcpServers/mcp_servers/mcp
+      - project-scoped projects[<path>].mcpServers (Claude Code project-local MCP)
+      - top-level projects (fallback raro)
+
+    Retorna (token, source) ou (None, None).
     """
     cj = Path.home() / ".claude.json"
     if not cj.exists():
@@ -87,18 +109,27 @@ def extract_token_from_claude_json():
         data = json.loads(cj.read_text())
     except Exception:
         return None, None
+
+    # Shape 1: top-level
     for key in ("mcpServers", "mcp_servers", "mcp"):
-        block = data.get(key, {}) if isinstance(data, dict) else {}
-        for name, cfg in (block or {}).items():
-            if "meta" not in name.lower():
+        token, src = _scan_mcp_block(data.get(key, {}))
+        if token:
+            return token, src
+
+    # Shape 2: project-scoped
+    projects = data.get("projects", {})
+    if isinstance(projects, dict):
+        for proj_path, proj_cfg in projects.items():
+            if not isinstance(proj_cfg, dict):
                 continue
-            if not isinstance(cfg, dict):
-                continue
-            token = (cfg.get("access_token")
-                     or cfg.get("token")
-                     or (cfg.get("env") or {}).get("META_ACCESS_TOKEN"))
-            if token:
-                return token, name
+            for key in ("mcpServers", "mcp_servers", "mcp"):
+                token, src = _scan_mcp_block(
+                    proj_cfg.get(key, {}),
+                    source_prefix=f"projects[{proj_path}]/",
+                )
+                if token:
+                    return token, src
+
     return None, None
 
 

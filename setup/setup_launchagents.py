@@ -80,6 +80,23 @@ def update_progress(key, value):
     PROGRESS.write_text(json.dumps(data, indent=2))
 
 
+def clear_progress_keys(*keys):
+    """Remove keys de setup6_progress.json (no-op se não existirem)."""
+    if not PROGRESS.exists():
+        return
+    try:
+        data = json.loads(PROGRESS.read_text())
+    except Exception:
+        return
+    changed = False
+    for k in keys:
+        if k in data:
+            del data[k]
+            changed = True
+    if changed:
+        PROGRESS.write_text(json.dumps(data, indent=2))
+
+
 def install_plist(name, home, python):
     src = PLIST_SRC / name
     dst = LAUNCH_DST / name
@@ -130,6 +147,11 @@ def main():
             print(f"   Pulando {FETCH_PLIST}. Outros fetchers continuam rodando.")
         else:
             update_progress("fetch_conflict_acknowledged", ",".join(conflicts))
+            # Re-instalando fetch após skip prévio: limpa flag stale.
+            clear_progress_keys("fetch_skipped_reason")
+    else:
+        # Sem conflito → instala tudo. Limpa flag stale de skip prévio.
+        clear_progress_keys("fetch_skipped_reason", "fetch_conflict_acknowledged")
 
     LAUNCH_DST.mkdir(parents=True, exist_ok=True)
     home = str(Path.home())
