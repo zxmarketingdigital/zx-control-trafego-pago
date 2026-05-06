@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""
+Setup 6 — Etapa 0: Diagnóstico da Base
+Verifica pré-requisitos, cria estrutura de pastas, mostra plano das 10 etapas.
+"""
+import json
+import platform
+import shutil
+import sys
+from pathlib import Path
+
+OPERACAO = Path.home() / ".operacao-ia"
+CONFIG = OPERACAO / "config" / "config.json"
+
+REQUIRED_DIRS = [
+    OPERACAO / "config",
+    OPERACAO / "scripts" / "meta",
+    OPERACAO / "dashboards",
+    OPERACAO / "leads",
+    OPERACAO / "logs",
+]
+
+ETAPAS = [
+    "E0  Boas-vindas + Diagnóstico",
+    "E1  Conectar MCP oficial Meta (OAuth)",
+    "E2  Questionário: Perfil de Campanhas",
+    "E3  Instalar Skills + Agente Orquestrador",
+    "E4  Primeira coleta de métricas",
+    "E5  Dashboard local (localhost:8888)",
+    "E6  Skill: Criar Campanha",
+    "E7  Skill: Briefing Criativo",
+    "E8  Skills: Analyzer + Budget Optimizer",
+    "E9  LaunchAgents (fetch 3x/dia + server)",
+    "E10 Auditoria técnica + Finalização",
+]
+
+
+def check_python():
+    if sys.version_info < (3, 9):
+        print(f"❌ Python 3.9+ requerido. Você tem {sys.version_info.major}.{sys.version_info.minor}")
+        return False
+    print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}")
+    return True
+
+
+def check_gh():
+    if shutil.which("gh"):
+        print("✅ gh CLI instalado")
+        return True
+    print("⚠️  gh CLI não encontrado (opcional, mas recomendado)")
+    return True  # não bloqueia
+
+
+def check_config():
+    if not CONFIG.exists():
+        print(f"❌ Config base não encontrado: {CONFIG}")
+        print("   Você precisa concluir os Setups 1-5 antes do Setup 6")
+        return False
+    try:
+        cfg = json.loads(CONFIG.read_text())
+    except Exception as e:
+        print(f"❌ Config corrompido: {e}")
+        return False
+    phase = cfg.get("phase_completed", 0)
+    if phase < 5:
+        print(f"❌ Setup 5 não concluído (phase_completed={phase}). Conclua o Setup 5 primeiro.")
+        return False
+    print(f"✅ Setup 5 concluído (phase_completed={phase})")
+    return True
+
+
+def create_dirs():
+    for d in REQUIRED_DIRS:
+        d.mkdir(parents=True, exist_ok=True)
+    print(f"✅ Estrutura criada em {OPERACAO}/")
+
+
+def show_plan():
+    print("\n" + "=" * 60)
+    print("PLANO DAS 10 ETAPAS — Setup 6 Tráfego Pago Meta ADS")
+    print("=" * 60)
+    for e in ETAPAS:
+        print(f"  {e}")
+    print("=" * 60)
+
+
+def main():
+    print(f"\n🔍 Diagnóstico inicial — {platform.system()} {platform.release()}\n")
+    ok = all([check_python(), check_gh(), check_config()])
+    if not ok:
+        sys.exit(1)
+    create_dirs()
+    show_plan()
+    print("\n✅ Etapa 0 concluída. Pronto para a Etapa 1 (Conectar MCP Meta).")
+
+
+if __name__ == "__main__":
+    main()
