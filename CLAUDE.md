@@ -306,7 +306,7 @@ Diz no chat: "criar campanha de lead, R$30/dia, audiencia interesse marketing di
 
 3. Pergunte ao aluno o criativo: URL, caminho local (`.png/.jpg/.mp4/.mov`) ou "pular". Skill faz upload (`/adimages` ou `/advideos` + thumbnail via ffmpeg).
 
-4. Cria via `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_campaign + ads_create_ad_set + ads_create_ad`. Status sempre PAUSED.
+4. Cria via `mcp__meta-official__ads_create_campaign + ads_create_ad_set + ads_create_ad`. Status sempre PAUSED.
 
 5. Após criar, marque progresso:
    `python3 setup/setup_e6_test_campaign.py --mark-done <campaign_id>`
@@ -405,7 +405,7 @@ Decisoes de escala e budget viram comando de chat. Voce le o output, valida e ap
 3. Se contagem ≥ 1:
    - Invoque `meta-performance-analyzer` na janela 7d → top SCALE/KILL/KEEP.
    - Se houver campanhas ACTIVE, invoque `meta-budget-optimizer` com budget total = soma dos `daily_budget` atuais.
-   - Mostre outputs. Pergunte se aluno quer aplicar 1 mudança via `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_update_entity`.
+   - Mostre outputs. Pergunte se aluno quer aplicar 1 mudança via `mcp__meta-official__ads_update_entity`.
 
 4. Marque progresso:
    `python3 setup/setup_e8_test_analyzer.py --mark-done`
@@ -531,7 +531,7 @@ Nos vemos no proximo setup!
 - **Dashboards JSON:** `~/.operacao-ia/dashboards/paid-traffic-{4,7,14,30}d.json`
 - **Dashboard HTML:** servido em `http://localhost:8888/paid-traffic-dashboard-7d.html`
 - **Skills:** `~/.claude/skills/{agente-trafego-pago,meta-*}/`
-- **MCP usado:** `mcp__meta-official__*` (oficial Meta — `mcp.facebook.com/ads`) ou `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__*` (alias deferido)
+- **MCP usado:** `mcp__meta-official__*` (oficial Meta — `mcp.facebook.com/ads`)
 - **Token Meta:** `META_ACCESS_TOKEN` em `meta.env` (chmod 600). Fonte de verdade pro fetcher autônomo. Renovação: `setup_meta_oauth.py --renew`.
 - **Uninstall:** `python3 setup/setup_uninstall.py` — opção [A] mantém skills, [B] remove tudo.
 - **Glossário:** `docs/glossario.md` — CPL/CPA/ROAS/Pixel/CBO/ABO/Lookalike traduzidos.

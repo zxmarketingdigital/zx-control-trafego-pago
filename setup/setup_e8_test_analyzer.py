@@ -78,7 +78,7 @@ def main():
         print("   → mostra plano de realocação")
         print()
         print("3. Mostre os outputs ao aluno e pergunte se quer aplicar 1 mudança")
-        print("   (via mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_update_entity)")
+        print("   (via mcp__meta-official__ads_update_entity)")
         print()
         print("Após mostrar outputs:")
         print("  python3 setup/setup_e8_test_analyzer.py --mark-done")

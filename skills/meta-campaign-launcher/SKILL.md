@@ -17,7 +17,7 @@ ANTES de pedir input ao aluno, descobre:
 
 1. **Conta de anúncios**: lê `META_AD_ACCOUNT_ID` de `~/.operacao-ia/config/meta.env`. Se vazio, pede pro aluno rodar `setup_meta_oauth.py --set-account`.
 
-2. **Páginas FB do Business**: chama `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_get_pages_for_business(business_id)`. `business_id` vem de `mcp__...__ads_get_ad_accounts → business.id`. Se >1, mostra lista numerada.
+2. **Páginas FB do Business**: chama `mcp__meta-official__ads_get_pages_for_business(business_id)`. `business_id` vem de `mcp__...__ads_get_ad_accounts → business.id`. Se >1, mostra lista numerada.
 
 3. **Pixel**: lê `META_PIXEL_ID` de `meta.env`. Se vazio, chama `GET /act_<id>/adspixels?fields=id,name` (via `mcp__meta-official` ou curl direto). Se >1, lista pra aluno escolher e grava no `meta.env`.
 
@@ -58,7 +58,7 @@ Vamos criar sua campanha. Te pergunto 4 coisas e monto tudo.
 
 Detecta extensão:
 
-- **`.png`/`.jpg`/`.jpeg`**: upload via `mcp__meta_ads__meta_upload_image` se token meta_ads válido. Senão `curl POST /act_<id>/adimages -F filename=@path -F access_token=$TOKEN` (token de `meta.env`). Pega `image_hash` do response.
+- **`.png`/`.jpg`/`.jpeg`**: upload via `curl POST /act_<id>/adimages -F filename=@path -F access_token=$TOKEN` (token de `meta.env`). Pega `image_hash` do response.
 
 - **`.mp4`/`.mov`**: `curl POST /act_<id>/advideos -F source=@path -F access_token=$TOKEN`. Pega `video_id`. Auto-extrai thumbnail:
   ```bash
@@ -81,9 +81,9 @@ NÃO tente automatizar — instrua aluno a fornecer caminho/URL.
 
 Sequência de tool calls:
 
-1. `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_campaign(name, objective, status="PAUSED")`
-2. `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_ad_set(campaign_id, daily_budget, audience_spec, page_id, optimization_goal, billing_event, status="PAUSED")`
-3. `mcp__b4eb99e9-37d5-4d85-b018-af88ff470224__ads_create_ad(adset_id, creative={...}, status="PAUSED")`
+1. `mcp__meta-official__ads_create_campaign(name, objective, status="PAUSED")`
+2. `mcp__meta-official__ads_create_ad_set(campaign_id, daily_budget, audience_spec, page_id, optimization_goal, billing_event, status="PAUSED")`
+3. `mcp__meta-official__ads_create_ad(adset_id, creative={...}, status="PAUSED")`
 
 ### 6. Output ao aluno
 
