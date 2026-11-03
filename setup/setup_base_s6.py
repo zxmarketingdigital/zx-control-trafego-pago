@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
 Setup 6 — Etapa 0: Diagnóstico da Base
-Verifica pré-requisitos, cria estrutura de pastas, mostra plano das 10 etapas.
+Verifica Python/gh (sem exigir nenhum setup anterior), garante config.json mínimo, cria estrutura de pastas, mostra plano das 10 etapas.
 """
 import json
+import os
 import platform
+import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 OPERACAO = Path.home() / ".operacao-ia"
@@ -51,21 +54,125 @@ def check_gh():
     return True  # não bloqueia
 
 
+class ConfigBackupError(OSError):
+    """Nao foi possivel guardar copia de seguranca do config; o original NAO foi tocado."""
+
+
+def backup_config_copy(path):
+    """Copia (copy2) o config para <nome>.bak-<AAAAmmdd-HHMMSS>[-N], sem sobrescrever backup existente.
+
+    Confere que o destino existe com o mesmo tamanho. Em falha, o original fica intacto
+    e levanta ConfigBackupError (so entao o chamador pode recriar o config).
+    """
+    path = Path(path)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = None
+    try:
+        n = 0
+        while backup is None:
+            candidate = path.with_name("%s.bak-%s%s" % (path.name, stamp, "-%d" % n if n else ""))
+            try:
+                # O_EXCL: a criação é atômica; se outro processo pegou o nome, tenta o próximo sufixo.
+                fd = os.open(str(candidate), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                n += 1
+                continue
+            backup = candidate
+            with os.fdopen(fd, "wb") as dst, open(str(path), "rb") as src:
+                shutil.copyfileobj(src, dst)
+            os.chmod(str(backup), 0o600)  # backup nunca herda permissao aberta do original
+        if not backup.is_file() or backup.stat().st_size != path.stat().st_size:
+            raise OSError("copia de seguranca incompleta")
+    except OSError as e:
+        try:
+            if backup is not None and backup.is_file():
+                backup.unlink()
+        except OSError:
+            pass
+        msg = (f"Não consegui salvar uma cópia de segurança de {path}: {e}. "
+               "Verifique a permissão da pasta e rode de novo.")
+        print(f"❌ {msg}")
+        raise ConfigBackupError(msg) from e
+    return backup
+
+
+def parse_phase(value):
+    """Interpreta phase_completed de forma tolerante: 5, 5.0, "5", "week5", "semana 5", "phase5". Invalido = 0."""
+    if isinstance(value, bool):
+        return 0
+    try:
+        number = float(value)
+    except OverflowError:
+        number = float("inf") if value > 0 else 0.0  # inteiro gigante: maior que qualquer fase, nunca sobrescreve
+    except (TypeError, ValueError):
+        achou = re.search(r"\d+(?:\.\d+)?", str(value))
+        number = float(achou.group()) if achou else 0
+    if number != number or number == float("-inf"):
+        return 0
+    return number
+
+
+def write_config_atomic(cfg):
+    """Grava o config.json por arquivo temporario no mesmo diretorio + os.replace (nunca deixa truncado)."""
+    destino = os.path.realpath(str(CONFIG))
+    tmp = "%s.tmp-%d" % (destino, os.getpid())
+    try:
+        try:
+            os.unlink(tmp)  # sobra de execucao interrompida
+        except FileNotFoundError:
+            pass
+        with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
+            f.write(json.dumps(cfg, indent=2, ensure_ascii=False))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, destino)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def check_config():
-    if not CONFIG.exists():
-        print(f"❌ Config base não encontrado: {CONFIG}")
-        print("   Você precisa concluir os Setups 1-5 antes do Setup 6")
+    """Garante um config.json utilizavel. Este setup nao exige nenhum setup anterior.
+
+    - Ausente: cria o minimo ({"phase_completed": 0}).
+    - Corrompido: guarda copia em config.json.bak-<timestamp> e recria o minimo.
+    - Valido (instalacao anterior): aproveita como esta, sem alterar.
+    """
+    try:
+        CONFIG.parent.mkdir(parents=True, exist_ok=True)
+        if not CONFIG.exists():
+            try:
+                fd = os.open(str(CONFIG), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                fd = None  # criado em paralelo por outra execucao: cai na leitura abaixo
+            if fd is not None:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(json.dumps({"phase_completed": 0}, indent=2, ensure_ascii=False) + "\n")
+                print("✅ Primeira instalação — config.json mínimo criado")
+                return True
+    except OSError as oe:
+        print(f"❌ Não consegui criar o config.json ({oe}). Verifique a permissão da pasta {CONFIG.parent} e rode de novo.")
         return False
     try:
         cfg = json.loads(CONFIG.read_text())
+        if not isinstance(cfg, dict):
+            raise ValueError("config.json não é um objeto JSON")
     except Exception as e:
-        print(f"❌ Config corrompido: {e}")
-        return False
-    phase = cfg.get("phase_completed", 0)
-    if phase < 5:
-        print(f"❌ Setup 5 não concluído (phase_completed={phase}). Conclua o Setup 5 primeiro.")
-        return False
-    print(f"✅ Setup 5 concluído (phase_completed={phase})")
+        try:
+            backup = backup_config_copy(CONFIG)  # ConfigBackupError: original fica intacto
+            print(f"⚠️  config.json inválido ({e}) — cópia guardada em {backup.name}")
+            write_config_atomic({"phase_completed": 0})
+            print("✅ config.json mínimo recriado")
+        except ConfigBackupError:
+            return False  # mensagem ja impressa; config original intacto
+        except OSError as oe:
+            print(f"❌ Não consegui recriar o config.json ({oe}). O original e a cópia de segurança foram preservados; verifique a permissão/espaço em disco e rode de novo.")
+            return False
+        return True
+    print(f"✅ Instalação anterior encontrada (phase_completed={cfg.get('phase_completed', 0)}) — aproveitando o que for válido")
     return True
 
 

@@ -8,6 +8,9 @@ import sys
 import webbrowser
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from setup_base_s6 import ConfigBackupError, backup_config_copy, parse_phase, write_config_atomic  # noqa: E402
+
 OPERACAO = Path.home() / ".operacao-ia"
 CONFIG = OPERACAO / "config" / "config.json"
 PERFIL = OPERACAO / "config" / "meta_perfil.json"
@@ -32,16 +35,34 @@ def fmt_target(k):
 
 
 def main():
-    if not CONFIG.exists():
-        print("❌ config.json não existe")
-        sys.exit(1)
     if not PERFIL.exists():
         print("❌ meta_perfil.json não existe (rode E2)")
         sys.exit(1)
 
-    cfg = json.loads(CONFIG.read_text())
-    cfg["phase_completed"] = max(cfg.get("phase_completed", 0), 6)
-    CONFIG.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
+    # Este setup não exige nenhum setup anterior: config.json ausente/corrompido é recriado.
+    CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    cfg = None
+    if CONFIG.exists():
+        try:
+            cfg = json.loads(CONFIG.read_text())
+            if not isinstance(cfg, dict):
+                raise ValueError("config.json não é um objeto JSON")
+        except Exception:
+            try:
+                backup = backup_config_copy(CONFIG)
+            except ConfigBackupError:
+                sys.exit(1)  # mensagem ja impressa; config original intacto
+            print(f"⚠️  config.json inválido — cópia guardada em {backup.name}")
+            cfg = None
+    if cfg is None:
+        cfg = {}
+    anterior = parse_phase(cfg.get("phase_completed", 0))
+    if anterior < 6 and "setup6" not in cfg:
+        # guarda o valor ORIGINAL (ex.: "week5"), para o uninstall restaurar exatamente
+        cfg["setup6"] = {"phase_before": cfg.get("phase_completed", 0)}
+    if anterior < 6:  # nunca reduz um valor existente maior
+        cfg["phase_completed"] = 6
+    write_config_atomic(cfg)
     print(f"✅ phase_completed = {cfg['phase_completed']}")
 
     perfil = json.loads(PERFIL.read_text())

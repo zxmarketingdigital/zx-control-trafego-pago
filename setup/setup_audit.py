@@ -128,14 +128,15 @@ def c_launchagents_loaded():
 
 
 def c_phase_completed():
+    """Informativo: este setup não exige nenhum setup anterior (nunca reprova)."""
     p = OPERACAO / "config" / "config.json"
     if not p.exists():
-        return False, "config.json base não existe"
+        return True, "config.json ausente (informativo — o setup recria o mínimo)"
     try:
         cfg = json.loads(p.read_text())
-        return cfg.get("phase_completed", 0) >= 5, f"phase_completed={cfg.get('phase_completed')}"
+        return True, f"config.json presente, phase_completed={cfg.get('phase_completed', 0)} (informativo)"
     except Exception as e:
-        return False, f"Erro: {e}"
+        return True, f"config.json ilegível (informativo): {e}"
 
 
 def c_meta_env():
@@ -155,7 +156,7 @@ def c_python_version():
 def main():
     print("\n🔍 Auditoria Técnica — Setup 6\n")
 
-    check("Pré-requisito Setup 5",     c_phase_completed)
+    check("config.json (informativo)",   c_phase_completed)
     check("Python 3.9+",                c_python_version)
     check("meta.env preenchido",        c_meta_env)
     check("Perfil de campanhas",        c_perfil)

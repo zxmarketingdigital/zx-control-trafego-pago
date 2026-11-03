@@ -3,7 +3,7 @@
 Setup 6 — Uninstall
 
 Remove configs, LaunchAgents, dashboards e (opcional) skills do Setup 6.
-Reverte phase_completed 6→5 em config.json.
+Reverte phase_completed 6→(fase anterior à instalação) em config.json.
 
 Uso:
   python3 setup/setup_uninstall.py
@@ -92,9 +92,15 @@ def revert_phase():
         print(f"  ⚠️  config.json inválido: {e}")
         return
     if data.get("phase_completed") == 6:
-        data["phase_completed"] = 5
+        # volta para a fase de antes do Setup 6 (gravada na instalação); sem registro, assume 5
+        setup6 = data.get("setup6")
+        before = setup6.get("phase_before", 5) if isinstance(setup6, dict) else 5
+        if isinstance(before, bool) or not isinstance(before, (int, float, str)):
+            before = 5  # so restaura valor de fase valido (inclui o texto original, ex.: "week5")
+        data["phase_completed"] = before
+        data.pop("setup6", None)
         CONFIG.write_text(json.dumps(data, indent=2))
-        print("  ✓ phase_completed: 6 → 5")
+        print(f"  ✓ phase_completed: 6 → {before}")
     else:
         print(f"  - phase_completed já é {data.get('phase_completed')}")
 

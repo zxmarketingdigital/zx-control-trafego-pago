@@ -5,7 +5,7 @@ Setup oficial da Semana 6 do ZX Control 2.0 Growth. Instala operação técnica 
 ## Pré-requisitos
 
 - macOS (Linux/Windows funcionam parcialmente — sem LaunchAgents)
-- Setup 5 do ZX Control concluído (`phase_completed >= 5` em `~/.operacao-ia/config/config.json`)
+- Não exige setup anterior — se você já tem outro setup instalado, ele aproveita o que estiver válido.
 - Python 3.9+
 - Claude Code com MCP oficial Meta disponível (`mcp__meta-official__*`)
 - Conta Meta Business + Ad Account ativa
