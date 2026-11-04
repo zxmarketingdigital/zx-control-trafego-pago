@@ -123,7 +123,7 @@ def main():
     plists_to_install = list(PLISTS)
     conflicts = detect_conflicts()
     if conflicts:
-        print("⚠️  Detectei outros fetchers Meta rodando no seu Mac:")
+        print("⚠️  Detectei outros fetchers Meta rodando neste computador:")
         for label in conflicts:
             print(f"     - {label}")
         print()
